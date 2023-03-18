@@ -11,7 +11,7 @@ Makes total sense that we have to hack together a way for Transmission and Plex 
 ## The magic workflow 🪄
 This all came about because I want to be able to throw something on my Plex server from my couch, from work, or from anywhere. Missed the end of the movie when the in-flight entertainment shut off on landing? No prob, kick off the download and finish watching at home.
 
-Here's how it works:
+**Here's how it works:**
 
 ### 🙋‍♀️ Step 1: Grab your `.torrent` file 👈 _this is the only step where you have to do something_
 - Find the media you want to download from the public domain, open source, Creative Commons, or other **legal** torrent site of your choice
@@ -68,17 +68,19 @@ _Before I upgraded to the Mac Mini, I was running this on an iMac from **2009** 
     - `[Dropbox folder]/Downloads/Complete` (script moves `.torrent` files here once transfer is complete)
     - `[Dropbox folder]/Downloads/Logs` (script creates a timestamped file for each download)
 - `$PLEX_PATH`: The folder that contains Plex's Movie and TV Shows library folders
-  - If downloading and Plex are both running on the same machine, this is probably just a local folder.
+  - If downloading and Plex are both running on the same machine, this is probably just a local folder
   - If you're running Plex on a NAS, mount the drive as a network volume and find the Plex folders
 - `$NOTIFY_SHORTCUT`: The name of a shortcut (Apple Shortcuts) to trigger
-  - Notifications between Apple devices is surprisingly hard – Apple assumes that if a notification is coming from yourself, that means you've already read it, so it doesn't actually notify.
+  - Notifications between Apple devices is surprisingly hard – Apple assumes that if a notification is coming from yourself, that means you've already read it, so it doesn't actually notify
   - One way to hack around this is using Reminders, here's an [example](https://www.icloud.com/shortcuts/989e685a87d74349864cfcc9c93846c5)
 
 Everything else is either generated in relation to these things, is passed from Transmission, or returned from FileBot.
 
 PSA: Transmission runs this script as a non-interactive, non-login shell. Depending on your environment, shell, and dotfile configuration, you may or may not have access to things like Homebrew paths or global variables.
 
-I found that sourcing my `.zshenv` file at the top of the script is the simplest way to get the config I need (and also solves the Homebrew problem). I export environment variables for frequently used paths and tools in my dotfiles, so this way I can use `$DROPBOXDIR`, `$NASDIR`, etc.
+~~I found that sourcing my `.zshenv` file at the top of the script is the simplest way to get the config I need (and also solves the Homebrew problem). I export environment variables for frequently used paths and tools in my dotfiles, so this way I can use `$DROPBOXDIR`, `$NASDIR`, etc.~~
+
+**Edit:** The script's shebang also determines what it has access to. A `sh` script will run with `zsh` but isn't a real `zsh` environment. Changing to an explicit `zsh` shebang fixes this (although it causes other problems).
 
 ## Testing
 
@@ -93,6 +95,12 @@ Repeat 3,587,279 times:
 6. Remove transfer and trash files in Transmission
 7. Move `.torrent` file out of watch dir
 8. Go to step 1
+
+### Troubleshooting
+
+This script isn't super resilient to environment changes (e.g. some zsh-y things in dotfiles aren't compatible with the `sh` shebang). The script will check for the variables it needs to run everything, and any errors will print to a log hardcoded to the `~/Desktop` path (and notify!).
+
+If you hardcode your paths rather than depending on env vars it will be less brittle, and you can probably log all the things to the same place.
 
 ## More info
 
