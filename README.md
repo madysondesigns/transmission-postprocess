@@ -86,21 +86,52 @@ PSA: Transmission runs this script as a non-interactive, non-login shell. Depend
 
 I highly recommend finding some very small torrents since you will probably be downloading them over and over and over again when testing this out.
 
+Tip: There is an anime TV show called UFO Baby that is available free on the Internet Archive, hits the right naming conventions for testing, and is about 150MB per episode. I have downloaded the same two episodes dozens of times and have still not watched it.
+
 Repeat 3,587,279 times:
 1. Tweak script
-2. Move `.torrent` file into watch dir
-3. Wait for Transmission to transfer
-4. Check the logs
-5. Figure out what isn't working
-6. Remove transfer and trash files in Transmission
-7. Move `.torrent` file out of watch dir
-8. Go to step 1
+1. Move `.torrent` file into watch dir
+1. Wait for Transmission to transfer
+1. Check the logs
+1. Figure out what isn't working
+1. Remove transfer and trash files in Transmission
+1. Move `.torrent` file out of watch dir
+1. Go to step 1
 
-### Troubleshooting
+For testing things that depend more on how FileBot matches than what comes in from Transmission, I added a `test-filebot.sh` script that includes the bare bones you need to call FileBot from the command line. It's more transparent and a lot quicker than triggering Transmission over and over again.
 
-This script isn't super resilient to environment changes (e.g. some zsh-y things in dotfiles aren't compatible with the `sh` shebang). The script will check for the variables it needs to run everything, and any errors will print to a log hardcoded to the `~/Desktop` path (and notify!).
+## Edge cases & troubleshooting
 
-If you hardcode your paths rather than depending on env vars it will be less brittle, and you can probably log all the things to the same place.
+The script handles most recent, well-named media you might download. There are a few bugs I've come across and fixed and I expect there will be more.
+
+### Torrent naming conventions:
+- FileBot relies on the name embedded in the torrent metadata (not the `.torrent` filename itself) and uses that to match media. If a torrent is poorly named I assume the results will be less than spectactular, but most torrents I've come across follow good naming conventions so it's not an issue.
+- Older and more obscure media can be more difficult to match – it seems to be more of an issue with TV shows, and I've found that the `tv` label helps (and I assume it can only be good for performance to narrow down the search).
+- I've included some regex logic (:53-:69) to match common TV naming conventions (e.g. S01E01) but one thing I don't think can be handled automatically is a full series pack – typically these only include the word 'complete' or nothing besides the show name.
+
+### Multi-file torrents:
+- If there are multiple media files in a torrent (e.g. an entire TV season), FileBot will loop through all the files to match and process each. This can also include the `exec` call, depending on the format expressions you use.
+-  Some formats (e.g. `fn` or episode numbers) correspond to a file and some (e.g. movie/series name) correspond to the entire group. Including the former will call `exec` on each file, and the latter will only call it once.
+- The script parses the `exec` output (:104) to grab the title to show in the notification so multiple calls could break things. I've set it to print `primaryTitle` which should apply to a group of files and limited `awk` to only return the first match, but it's not super bulletproof.
+
+### Excluded or existing files:
+- FileBot strongly recommends you specify an `excludesList` so it does'nt process things twice. If you're in the testing phase, and FileBot isn't matching when you re-download, check whether your files are on that list and remove them or disable it temporarily.
+- FileBot also won't process if the files already exist in the destination folders. There is a `--conflict override` option available, but it hasn't worked for me. If you need to re-download something, delete the existing files before the script runs otherwise FileBot will skip them.
+
+### Logging:
+- Normal `stdout/stderr` output is sent into a black hole I haven't discovered yet, so the only way to see what's going on is to log all the things. I included a `print_log` helper to make that simpler, but it does take some trial and error to even know what to log.
+- Since Transmission kicks off the script, there's no way to redirect output when calling it, but I did come across a snippet to redirect output to a file (e.g. errors or plain `print` calls) from within a script. This even applies to the logging firehose when you add `-x` to the shebang – it's super useful when iterating through more drastic changes:
+
+  ```shell
+  # Include this up front to push stdout/stderr messages to a file you define:
+  exec > >(tee -a "$HOME/.tmp/transmission-post.log") 2>&1
+  ```
+
+### Shell environment config:
+- I lean heavily on my dotfiles and store things I frequently use in environment variables and helper functions. `zsh` makes it super simple to configure and load those things, but that means the script leverages some `zsh` specific things and isn't portable to other shells as-is.
+- Since this runs in a non-interactive, non-login shell, it only loads `.zshenv` and not `.zprofile`, `.zshrc`, or any other config files. If you've set up something in `.zshrc`, the script doesn't have access to it.
+- These kinds of errors tend to blow up hard and invisibly, so the script will check for the variables it needs to run everything, and any errors will print to a file hardcoded to the `~/Desktop` path (and notify!).
+- Of course, if you hardcode all the paths you need or only rely on something more universal like `$HOME`, you'll probably be fine.
 
 ## More info
 

@@ -11,7 +11,7 @@
 # TR_TORRENT_NAME - Name of torrent (not filename)
 # TR_TORRENT_TRACKERS - A comma-delimited list of the torrent's trackers' announce URLs
 
-# Config: Get environment vars and store working directories & helpers
+# Config: Get environment paths and store working vars
 [[ -d $DROPBOXDIR ]] && PROCESSING_PATH="$DROPBOXDIR/Downloads"
 [[ -d $NASDIR ]] && PLEX_PATH="$NASDIR/Plex"
 DOWNLOAD_PATH="$TR_TORRENT_DIR/$TR_TORRENT_NAME"
