@@ -36,8 +36,8 @@ fi
 
 # Helper: Make downloaded size easier to grok
 convert_size () {
-  local -F gigabytes=$(print -f "%.2f" "$(($1))e-9")
-  local -F megabytes=$(print -f "%.2f" "$(($1))e-6")
+  local -F gigabytes=$(print -f "%.1f" "$(($1))e-9")
+  local -F megabytes=$(print -f "%.0f" "$(($1))e-6")
   local LC_ALL=en_US.UTF-8
 
   [[ $gigabytes -ge 1 ]] && print -f "%'gGB" "$gigabytes" && return
