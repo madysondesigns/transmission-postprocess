@@ -11,40 +11,39 @@
 # TR_TORRENT_NAME - Name of torrent (not filename)
 # TR_TORRENT_TRACKERS - A comma-delimited list of the torrent's trackers' announce URLs
 
-# Config: Get environment paths and store working vars
-[[ -d $DROPBOXDIR ]] && PROCESSING_PATH="$DROPBOXDIR/Downloads"
-[[ -d $NASDIR ]] && PLEX_PATH="$NASDIR/Plex"
+# Config: Check and store all the things we'll need
 DOWNLOAD_PATH="$TR_TORRENT_DIR/$TR_TORRENT_NAME"
-LOG_FILE="$PROCESSING_PATH/Logs/$(date '+%Y%m%d@%H%M')-$TR_TORRENT_NAME.txt"
 NOTIFY_SHORTCUT="Notify All Devices"
+[[ ! -d $ZDOTDIR ]] && CONFIG_ERRORS+=("Dotfiles")
+[[ ! -d $NASDIR ]] && nas-keepalive > /dev/null
+[[ -d $NASDIR ]] && PLEX_PATH="$NASDIR/Plex" || CONFIG_ERRORS+=("NAS path")
+[[ -d $DROPBOXDIR ]] && PROCESSING_PATH="$DROPBOXDIR/Downloads" || CONFIG_ERRORS+=("Dropbox path")
 
-# Logging: Helper to make it less repetitve
+# Helper: Make logging less repetitve
+LOG_FILE="$PROCESSING_PATH/Logs/$(date '+%Y%m%d@%H%M')-$TR_TORRENT_NAME.txt"
 print_log () {
-  print "[$(date "+%F %T")] $1" >> "$LOG_FILE"
-}
-
-# Logging: Helper to make downloaded size easier to grok
-convert_size () {
-  local -F gigabytes=$(print -f "%.2f" "$(($1))e-9")
-  local -F megabytes=$(print -f "%.2f" "$(($1))e-6")
-  local LC_ALL=en_US.UTF-8
-
-  if [[ $gigabytes -ge 1 ]]; then
-    print -f "%'gGB" "$gigabytes"
-  elif [[ $megabytes -ge 1 ]]; then
-    print -f "%'.0fMB" "$megabytes"
-  else
-    print -f "%'gb" "$1"
-  fi
+  print "[$(date "+%F %T")] $1" | tee -a "$LOG_FILE"
 }
 
 # Config: Make sure we set things up properly and log/notify/fail if not
-if [[ ! $PROCESSING_PATH || ! $PLEX_PATH ]]; then
+if [[ -n $CONFIG_ERRORS ]]; then
   LOG_FILE="$HOME/Desktop/transmission-error.txt"
-  print_log "Transmission script error: Unable to set config from env variables (\$ZDOTDIR: $ZDOTDIR; \$DROPBOXDIR: $DROPBOXDIR; \$NASDIR: $NASDIR)"
-  print -n "Transmission script error, check error log" | shortcuts run "$NOTIFY_SHORTCUT"
+  LOG_TEXT="Transmission script error, missing config: ${(j:, :)CONFIG_ERRORS}"
+  print_log "$LOG_TEXT"
+  print -n "$LOG_TEXT" | shortcuts run "$NOTIFY_SHORTCUT"
   exit 1
 fi
+
+# Helper: Make downloaded size easier to grok
+convert_size () {
+  local -F gigabytes=$(print -f "%.1f" "$(($1))e-9")
+  local -F megabytes=$(print -f "%.0f" "$(($1))e-6")
+  local LC_ALL=en_US.UTF-8
+
+  [[ $gigabytes -ge 1 ]] && print -f "%'gGB" "$gigabytes" && return
+  [[ $megabytes -ge 1 ]] && print -f "%'.0fMB" "$megabytes" && return
+  print -f "%'gb" "$1" && return
+}
 
 # Logging: Start a logfile for date and torrent
 print_log "Starting postprocess for $TR_TORRENT_NAME..."
@@ -82,7 +81,7 @@ else
 fi
 
 # Logging: Print the params and info we've generated so far
-print_log "Processing $TR_TORRENT_NAME with label: $LABEL; source: $DOWNLOAD_PATH; destination: $PLEX_PATH; size: $(convert_size $TR_TORRENT_BYTES_DOWNLOADED)"
+print_log "Processing download: $DOWNLOAD_PATH; label: $LABEL; destination: $PLEX_PATH; size: $(convert_size $TR_TORRENT_BYTES_DOWNLOADED)"
 
 # Filebot: Call AMC script to do the thing
 FILEBOT=$(/usr/local/bin/filebot -script fn:amc \

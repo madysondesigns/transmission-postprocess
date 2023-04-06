@@ -104,15 +104,20 @@ For testing things that depend more on how FileBot matches than what comes in fr
 
 The script handles most recent, well-named media you might download. There are a few bugs I've come across and fixed and I expect there will be more.
 
+### Destination path:
+- Not surprisingly, if the destination path isn't available, FileBot is gonna have a hard time. The script includes some error handling to hopefully make this transparent.
+- If you're downloading and Plexing from the same machine this likely won't be an issue, but if you are copying files to a NAS then it needs to be mounted when the script runs.
+- I've included a check for the NAS path (:18) and if it isn't a directory, call a script that remounts the NAS drive – you can grab that script from my [wifi-keepalive](https://github.com/madysondesigns/wifi-keepalive) repo.
+
 ### Torrent naming conventions:
 - FileBot relies on the name embedded in the torrent metadata (not the `.torrent` filename itself) and uses that to match media. If a torrent is poorly named I assume the results will be less than spectactular, but most torrents I've come across follow good naming conventions so it's not an issue.
 - Older and more obscure media can be more difficult to match – it seems to be more of an issue with TV shows, and I've found that the `tv` label helps (and I assume it can only be good for performance to narrow down the search).
-- I've included some regex logic (:53-:69) to match common TV naming conventions (e.g. S01E01) but one thing I don't think can be handled automatically is a full series pack – typically these only include the word 'complete' or nothing besides the show name.
+- I've included some regex logic (:52-:68) to match common TV naming conventions (e.g. S01E01) but one thing I don't think can be handled automatically is a full series pack – typically these only include the word 'complete' or nothing besides the show name.
 
 ### Multi-file torrents:
 - If there are multiple media files in a torrent (e.g. an entire TV season), FileBot will loop through all the files to match and process each. This can also include the `exec` call, depending on the format expressions you use.
 -  Some formats (e.g. `fn` or episode numbers) correspond to a file and some (e.g. movie/series name) correspond to the entire group. Including the former will call `exec` on each file, and the latter will only call it once.
-- The script parses the `exec` output (:104) to grab the title to show in the notification so multiple calls could break things. I've set it to print `primaryTitle` which should apply to a group of files and limited `awk` to only return the first match, but it's not super bulletproof.
+- The script parses the `exec` output (:103) to grab the title to show in the notification so multiple calls could break things. I've set it to print `primaryTitle` which should apply to a group of files and limited `awk` to only return the first match, but it's not super bulletproof.
 
 ### Excluded or existing files:
 - FileBot strongly recommends you specify an `excludesList` so it does'nt process things twice. If you're in the testing phase, and FileBot isn't matching when you re-download, check whether your files are on that list and remove them or disable it temporarily.
