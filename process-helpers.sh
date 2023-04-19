@@ -11,6 +11,11 @@ print_log () {
   fi
 }
 
+# Notify via Shortcuts
+send_notification () {
+  print "$1" | shortcuts run "Notify All Devices"
+}
+
 # Make downloaded size easier to grok
 convert_size () {
   local -F gigabytes=$(print -f "%.1f" "$(($1))e-9")
@@ -41,25 +46,20 @@ probably_tv () {
   return 1
 }
 
-# Handle labels if we have them and log results
+# Handle labels if we have them
 # TODO: figure out how to log this
 generate_label () {
-  # local tv_match=$(probably_tv "$1")
-  # local label="N/A"
-
   # if [[ $TR_TORRENT_LABELS ]]; then
   #   print_log "Using labels for $1 passed from Transmission"
-  #   label=$TR_TORRENT_LABELS
   # elif [[ $tv_match ]]; then
   #   print_log "$1 $tv_match, adding TV label"
-  #   label="tv"
   # else
   #   print_log "No labels for $1, allowing FileBot to detect"
   # fi
 
-  [[ $TR_TORRENT_LABELS ]] && print -f "$TR_TORRENT_LABELS" && return
-  probably_tv "$1" > /dev/null && print -f "tv" && return
-  print -f "N/A" && return
+  [[ $TR_TORRENT_LABELS ]] && print "$TR_TORRENT_LABELS" && return
+  probably_tv "$1" > /dev/null && print "tv" && return
+  print "N/A" && return
 
 }
 
@@ -67,11 +67,11 @@ generate_label () {
 parse_processed () {
   local processed=$(sed -En "s/^Processed ([0-9]+).*$/\1/p" <<< "$1")
   local total=$(paste -sd+ - <<< $processed | bc)
-  print -f "$total" && return
+  print "$total" && return
 }
 
 # If any files were processed, find the exec output and parse the title
 parse_title () {
   local title=$(sed -En "s/^Execute: : '(.+)'$/\1/p" <<< "$1" | head -1)
-  print -f "$title" && return
+  print "$title" && return
 }
