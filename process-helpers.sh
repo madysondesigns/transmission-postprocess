@@ -47,20 +47,18 @@ probably_tv () {
 }
 
 # Handle labels if we have them
-# TODO: figure out how to log this
-generate_label () {
-  # if [[ $TR_TORRENT_LABELS ]]; then
-  #   print_log "Using labels for $1 passed from Transmission"
-  # elif [[ $tv_match ]]; then
-  #   print_log "$1 $tv_match, adding TV label"
-  # else
-  #   print_log "No labels for $1, allowing FileBot to detect"
-  # fi
+update_label () {
+  local tv_match=$(probably_tv "$1")
 
-  [[ $TR_TORRENT_LABELS ]] && print "$TR_TORRENT_LABELS" && return
-  probably_tv "$1" > /dev/null && print "tv" && return
-  print "N/A" && return
-
+  if [[ $TR_TORRENT_LABELS ]]; then
+    LABEL="$TR_TORRENT_LABELS"
+    print_log "Using labels for $1 passed from Transmission"
+  elif [[ $tv_match ]]; then
+    LABEL="tv"
+    print_log "$1 $tv_match, using TV label"
+  else
+    print_log "No labels for $1, allowing FileBot to detect"
+  fi
 }
 
 # Find the "Processed # files" string and parse the number

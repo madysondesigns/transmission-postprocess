@@ -34,7 +34,8 @@ print_log "Starting postprocess for $TR_TORRENT_NAME..."
 
 # Setup: Handle torrent info
 DOWNLOAD_PATH="$TR_TORRENT_DIR/$TR_TORRENT_NAME"
-LABEL=$(generate_label "$TR_TORRENT_NAME")
+LABEL="N/A"
+update_label "$TR_TORRENT_NAME"
 
 print_log "Processing download: $DOWNLOAD_PATH; label: $LABEL; destination: $PLEX_PATH; size: $(convert_size $TR_TORRENT_BYTES_DOWNLOADED)"
 
@@ -56,9 +57,9 @@ print_log "$FILEBOT"
 [[ $FILEBOT ]] && PROCESSED=$(parse_processed $FILEBOT)
 if [[ $PROCESSED && $PROCESSED -ge 1 ]]; then
   TITLE=$(parse_title "$FILEBOT")
-  NOTIFICATION="$TITLE ready to Plex! 🤖🎉"
+  NOTIFICATION="〝$TITLE〞 ready to Plex! 🤖🎉"
 else
-  NOTIFICATION="$TR_TORRENT_NAME downloaded but not processed 🤖🤷‍♀️"
+  NOTIFICATION="〝$TR_TORRENT_NAME〞 downloaded but not processed 🤖🤷‍♀️"
   cp -r "$DOWNLOAD_PATH" "$PLEX_PATH/Unsorted" && NOTIFICATION+=" (copied to $PLEX_PATH/Unsorted)"
 fi
 

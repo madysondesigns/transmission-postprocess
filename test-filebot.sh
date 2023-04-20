@@ -3,12 +3,13 @@
 # This script is a simplified version of the main postprocess script that can
 # test FileBot matching directly from the command line. Intended to be run on
 # previously downloaded files to tweak FileBot options & formats.
-# Usage: `./test-filebot.sh "path/to/downloaded.torrent"`
+# Usage: `./test-filebot.sh "path/to/downloaded.files"`
 
+# get working dir and source helpers file
 SCRIPT_PATH=$(dirname $0:A)
 source "$SCRIPT_PATH/process-helpers.sh"
 
-# get torrent passed in as an arg and slice off name
+# get torrent path/name from args
 DOWNLOAD_PATH="$1"
 TR_TORRENT_NAME=$(basename "$DOWNLOAD_PATH")
 
@@ -17,10 +18,11 @@ OUTPUT_PATH="$SCRIPT_PATH/test"
 LOG_FILE="$OUTPUT_PATH/$TR_TORRENT_NAME.txt"
 
 # finding things in scrollback sucks
-print_log "🟢🟢🟢 Testing $TR_TORRENT_NAME 🟢🟢🟢"
+print_log "Testing $TR_TORRENT_NAME 🤖🟢"
 
 # set label
-LABEL=$(generate_label "$TR_TORRENT_NAME")
+LABEL="N/A"
+update_label "$TR_TORRENT_NAME"
 
 # do the thing, using symlink action because it's faster
 FILEBOT=$(/usr/local/bin/filebot -script fn:amc \
@@ -42,7 +44,10 @@ print_log "Processed $PROCESSED files"
 # log results
 if [[ $PROCESSED && $PROCESSED -ge 1 ]]; then
   TITLE=$(parse_title "$FILEBOT")
-  print_log "🤖🤖🤖 $TITLE processed successfully! 🎉 🤖🤖🤖"
+  NOTIFICATION="〝$TITLE〞 processed successfully! 🤖🎉"
 else
-  print_log "🤖🤖🤖 $TR_TORRENT_NAME not processed 🤷‍♀️ 🤖🤖🤖"
+  NOTIFICATION="〝$TR_TORRENT_NAME〞 not processed 🤖🤷‍♀️"
 fi
+
+print_log "$NOTIFICATION"
+send_notification "$NOTIFICATION"
