@@ -70,9 +70,9 @@ _Before I upgraded to the Mac Mini, I was running this on an iMac from **2009** 
 - `$PLEX_PATH`: The folder that contains Plex's Movie and TV Shows library folders
   - If downloading and Plex are both running on the same machine, this is probably just a local folder
   - If you're running Plex on a NAS, mount the drive as a network volume and find the Plex folders
-- `$NOTIFY_SHORTCUT`: The name of a shortcut (Apple Shortcuts) to trigger
+- Notification shortcut (`process-helpers.sh:16`, see below): The name of a shortcut (Apple Shortcuts) to trigger
   - Notifications between Apple devices is surprisingly hard – Apple assumes that if a notification is coming from yourself, that means you've already read it, so it doesn't actually notify
-  - One way to hack around this is using Reminders, here's an [example](https://www.icloud.com/shortcuts/989e685a87d74349864cfcc9c93846c5)
+  - One way to hack around this is using Reminders, here's an [example](https://www.icloud.com/shortcuts/08048084872041e8b2a9804c679f339b)
 
 Everything else is either generated in relation to these things, is passed from Transmission, or returned from FileBot.
 
@@ -86,7 +86,7 @@ PSA: Transmission runs this script as a non-interactive, non-login shell. Depend
 
 I highly recommend finding some very small torrents since you will probably be downloading them over and over and over again when testing this out.
 
-Tip: There is an anime TV show called UFO Baby that is available free on the Internet Archive, hits the right naming conventions for testing, and is about 150MB per episode. I have downloaded the same two episodes dozens of times and have still not watched it.
+Tip: There is an anime TV show called UFO Baby that is available free on the Internet Archive, hits the right naming conventions for testing, and runs about 80–150MB per episode. I have downloaded the same two episodes dozens of times and have still not watched it.
 
 Repeat 3,587,279 times:
 1. Tweak script
@@ -100,6 +100,10 @@ Repeat 3,587,279 times:
 
 For testing things that depend more on how FileBot matches than what comes in from Transmission, I added a `test-filebot.sh` script that includes the bare bones you need to call FileBot from the command line. It's more transparent and a lot quicker than triggering Transmission over and over again.
 
+## Helpers
+
+I've pulled a few functions into a separate file (`process-helpers.sh`) for reusability and consistency. These are sourced in both the main script (`transmission-postprocess.sh:15`) and test script (`test-filebot.sh:9`) so there's parity between testing and the real thing.
+
 ## Edge cases & troubleshooting
 
 The script handles most recent, well-named media you might download. There are a few bugs I've come across and fixed and I expect there will be more.
@@ -107,20 +111,25 @@ The script handles most recent, well-named media you might download. There are a
 ### Destination path:
 - Not surprisingly, if the destination path isn't available, FileBot is gonna have a hard time. The script includes some error handling to hopefully make this transparent.
 - If you're downloading and Plexing from the same machine this likely won't be an issue, but if you are copying files to a NAS then it needs to be mounted when the script runs.
-- I've included a check for the NAS path (:18) and if it isn't a directory, call a script that remounts the NAS drive – you can grab that script from my [wifi-keepalive](https://github.com/madysondesigns/wifi-keepalive) repo.
+- I've included a check for the NAS path (`:19`) and if it isn't a directory, call a script that remounts the NAS drive – you can grab that script from my [wifi-keepalive](https://github.com/madysondesigns/wifi-keepalive) repo.
 
 ### Torrent naming conventions:
-- FileBot relies on the name embedded in the torrent metadata (not the `.torrent` filename itself) and uses that to match media. If a torrent is poorly named I assume the results will be less than spectactular, but most torrents I've come across follow good naming conventions so it's not an issue.
-- Older and more obscure media can be more difficult to match – it seems to be more of an issue with TV shows, and I've found that the `tv` label helps (and I assume it can only be good for performance to narrow down the search).
-- I've included some regex logic (:52-:68) to match common TV naming conventions (e.g. S01E01) but one thing I don't think can be handled automatically is a full series pack – typically these only include the word 'complete' or nothing besides the show name.
+- FileBot relies on the name embedded in the torrent metadata (not the `.torrent` filename itself) and uses that to match media. If a torrent is poorly named I assume the results will be less than spectacular, but most torrents I've come across follow good naming conventions so it's not an issue.
+- Older and more obscure media can be more difficult to match – it seems to be more of an issue with TV shows, and I've found that forcing TV mode with the `tv` label helps (and I assume it can only be good for performance to narrow down the search).
+- I've included some regex logic (`process-helpers.sh:31-:47`) to match common TV naming conventions (e.g. S01E01), and use the `tv` label if so (or use the label provided by Transmission, even though this isn't supported yet).
+- One thing I don't think can be handled automatically is a full series pack – typically these only include the word 'complete' or nothing besides the show name so we have to rely on FileBot completely here.
 
 ### Multi-file torrents:
-- If there are multiple media files in a torrent (e.g. an entire TV season), FileBot will loop through all the files to match and process each. This can also include the `exec` call, depending on the format expressions you use.
--  Some formats (e.g. `fn` or episode numbers) correspond to a file and some (e.g. movie/series name) correspond to the entire group. Including the former will call `exec` on each file, and the latter will only call it once.
-- The script parses the `exec` output (:103) to grab the title to show in the notification so multiple calls could break things. I've set it to print `primaryTitle` which should apply to a group of files and limited `awk` to only return the first match, but it's not super bulletproof.
+- If a torrent includes multiple files, FileBot will try to to match and process them as a group and individually. This affects how the `exec` command is called, depending on the [format expressions](https://www.filebot.net/naming.html) you use (currently set to `{n}`).
+- Some formats (e.g. `{fn}` or episode numbers) correspond to an individual file and some (e.g. `{n}` for movie/series name) correspond to the series or movie. The script will call `exec` on each file when you include the former, and only once per match object when including the latter. A TV season pack is only one match object, but a movie pack will likely have multiple match objects, and multiple `exec` calls.
+- There is a helper (`process-helpers.sh:74`) that parses the `exec` output to grab a nicely formatted name for the notification, but it's not super bulletproof. It's limited to the first matching string to prevent logging/notification errors, but for a pack it might be less accurate.
+
+### Additional files:
+- Some torrents include extras, trailers, subtitles, `.nfo` files, etc. FileBot mostly handles these automatically, and you can customize how they're handled by passing additional `--def` options.
+- Sometimes FileBot processes extra files in multiple passes so there might be more than one 'Processed' string (no idea why this happens). There's a helper (`process-helpers.sh:67`) that should find all these counts and add them up to determine success but this is also a little brittle.
 
 ### Excluded or existing files:
-- FileBot strongly recommends you specify an `excludesList` so it does'nt process things twice. If you're in the testing phase, and FileBot isn't matching when you re-download, check whether your files are on that list and remove them or disable it temporarily.
+- FileBot strongly recommends you specify an `excludesList` so it doesn't process things twice. If you're in the testing phase, and FileBot isn't matching when you re-download, check whether your files are on that list and remove them or disable it temporarily.
 - FileBot also won't process if the files already exist in the destination folders. There is a `--conflict override` option available, but it hasn't worked for me. If you need to re-download something, delete the existing files before the script runs otherwise FileBot will skip them.
 
 ### Logging:
